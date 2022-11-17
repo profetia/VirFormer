@@ -9,11 +9,12 @@ import torch.onnx
 
 import data
 import model
+import numpy as np
 
-parser = argparse.ArgumentParser(description='PyTorch Wikitext-2 RNN/LSTM/GRU/Transformer Language Model')
-parser.add_argument('--data', type=str, default='./data/wikitext-2',
+parser = argparse.ArgumentParser(description='PyTorch Transformer Model')
+parser.add_argument('--data', type=str, default='./data/',
                     help='location of the data sequence')
-parser.add_argument('--model', type=str, default='LSTM',
+parser.add_argument('--model', type=str, default='Transformer',
                     help='type of network (RNN_TANH, RNN_RELU, LSTM, GRU, Transformer)')
 parser.add_argument('--emsize', type=int, default=200,
                     help='size of word embeddings')
@@ -27,9 +28,9 @@ parser.add_argument('--clip', type=float, default=0.25,
                     help='gradient clipping')
 parser.add_argument('--epochs', type=int, default=40,
                     help='upper epoch limit')
-parser.add_argument('--batch_size', type=int, default=20, metavar='N',
+parser.add_argument('--batch_size', type=int, default=5000, metavar='N',
                     help='batch size')
-parser.add_argument('--bptt', type=int, default=35,
+parser.add_argument('--bptt', type=int, default=5000,
                     help='sequence length')
 parser.add_argument('--dropout', type=float, default=0.2,
                     help='dropout applied to layers (0 = no dropout)')
@@ -37,7 +38,7 @@ parser.add_argument('--tied', action='store_true',
                     help='tie the word embedding and softmax weights')
 parser.add_argument('--seed', type=int, default=1111,
                     help='random seed')
-parser.add_argument('--cuda', action='store_true', default=False,
+parser.add_argument('--cuda', action='store_true', default=True,
                     help='use CUDA')
 parser.add_argument('--mps', action='store_true', default=False,
                         help='enables macOS GPU training')
@@ -88,20 +89,22 @@ sequence = data.Sequence(args.data)
 # dependence of e. g. 'g' on 'f' can not be learned, but allows more efficient
 # batch processing.
 
-def batchify(data, bsz):
-    # Work out how cleanly we can divide the dataset into bsz parts.
-    nbatch = data.size(0) // bsz
-    # Trim off any extra elements that wouldn't cleanly fit (remainders).
-    data = data.narrow(0, 0, nbatch * bsz)
-    # Evenly divide the data across the bsz batches.
-    data = data.view(bsz, -1).t().contiguous()
-    return data.to(device)
+# def batchify(data, bsz):
+#     # Work out how cleanly we can divide the dataset into bsz parts.
+#     nbatch = data.size(0) // bsz
+#     # Trim off any extra elements that wouldn't cleanly fit (remainders).
+#     data = data.narrow(0, 0, nbatch * bsz)
+#     # Evenly divide the data across the bsz batches.
+#     data = data.view(bsz, -1).t().contiguous()
+#     return data.to(device)
 
-eval_batch_size = 10
-train_data = batchify(sequence.train, args.batch_size)
-val_data = batchify(sequence.valid, eval_batch_size)
-test_data = batchify(sequence.test, eval_batch_size)
-
+#eval_batch_size = 10
+# train_data = batchify(sequence.train, args.batch_size)
+# val_data = batchify(sequence.valid, eval_batch_size)
+# test_data = batchify(sequence.test, eval_batch_size)
+train_data = sequence.train
+val_data = sequence.valid
+test_data = sequence.test
 ###############################################################################
 # Build the model
 ###############################################################################
@@ -112,7 +115,7 @@ if args.model == 'Transformer':
 else:
     model = model.RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout, args.tied).to(device)
 
-criterion = nn.NLLLoss()
+criterion = nn.CrossEntropyLoss()
 
 ###############################################################################
 # Training code
@@ -137,31 +140,27 @@ def repackage_hidden(h):
 # by the batchify function. The chunks are along dimension 0, corresponding
 # to the seq_len dimension in the LSTM.
 
+
 def get_batch(source, i):
     seq_len = min(args.bptt, len(source) - 1 - i)
     data = source[i:i+seq_len]
-    target = source[i+1:i+1+seq_len].view(-1)
-    return data, target
-
+    target = source[i+1:i+1+seq_len]
+    return data.to(device), target.to(device)
 
 def evaluate(data_source):
     # Turn on evaluation mode which disables dropout.
     model.eval()
     total_loss = 0.
-    ntokens = len(sequence.dictionary)
-    if args.model != 'Transformer':
-        hidden = model.init_hidden(eval_batch_size)
+    ntokens = 4
+    total_length = np.sum([len(x) for x in data_source])
     with torch.no_grad():
-        for i in range(0, data_source.size(0) - 1, args.bptt):
-            data, targets = get_batch(data_source, i)
-            if args.model == 'Transformer':
+        for i in range(0, data_source.size):
+            for j in range(j,data_source[i].shape[0]-1, args.bptt):
+                data, targets = get_batch(data_source[i], j)
                 output = model(data)
-                output = output.view(-1, ntokens)
-            else:
-                output, hidden = model(data, hidden)
-                hidden = repackage_hidden(hidden)
-            total_loss += len(data) * criterion(output, targets).item()
-    return total_loss / (len(data_source) - 1)
+                output_flat = output.view(-1, ntokens)
+                total_loss += len(data) * criterion(output_flat, targets).item()
+    return total_loss / total_length
 
 
 def train():
@@ -169,22 +168,19 @@ def train():
     model.train()
     total_loss = 0.
     start_time = time.time()
-    ntokens = len(sequence.dictionary)
-    if args.model != 'Transformer':
-        hidden = model.init_hidden(args.batch_size)
-    for batch, i in enumerate(range(0, train_data.size(0) - 1, args.bptt)):
-        data, targets = get_batch(train_data, i)
-        # Starting each batch, we detach the hidden state from how it was previously produced.
-        # If we didn't, the model would try backpropagating all the way to start of the dataset.
-        model.zero_grad()
-        if args.model == 'Transformer':
+    ntokens = 4
+    total_length = np.sum([len(x) for x in train_data])
+    for batch, i in enumerate(range(0, train_data.size)):
+        for j in range(0,train_data[i].shape[0]-1, args.bptt):
+            data, targets = get_batch(train_data[i], j)
+            # Starting each batch, we detach the hidden state from how it was previously produced.
+            # If we didn't, the model would try backpropagating all the way to start of the dataset.
+            model.zero_grad()
             output = model(data)
             output = output.view(-1, ntokens)
-        else:
-            hidden = repackage_hidden(hidden)
-            output, hidden = model(data, hidden)
-        loss = criterion(output, targets)
-        loss.backward()
+
+            loss = criterion(output, targets)
+            loss.backward()
 
         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
         torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
@@ -198,7 +194,7 @@ def train():
             elapsed = time.time() - start_time
             print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.2f} | ms/batch {:5.2f} | '
                     'loss {:5.2f} | ppl {:8.2f}'.format(
-                epoch, batch, len(train_data) // args.bptt, lr,
+                epoch, batch, len(train_data), lr,
                 elapsed * 1000 / args.log_interval, cur_loss, math.exp(cur_loss)))
             total_loss = 0
             start_time = time.time()

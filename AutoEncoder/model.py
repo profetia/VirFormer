@@ -120,7 +120,7 @@ class TransformerModel(nn.Module):
         self.transformer_encoder = TransformerEncoder(encoder_layers, nlayers)
         self.encoder = nn.Embedding(ntoken, ninp)
         self.ninp = ninp
-        self.decoder = nn.Linear(ninp, ntoken)
+        self.decoder = nn.Linear(ninp, 1)
 
         self.init_weights()
 
@@ -144,8 +144,8 @@ class TransformerModel(nn.Module):
         else:
             self.src_mask = None
 
-        src = self.encoder(src) * math.sqrt(self.ninp)
+        src = self.encoder(src.long()) * math.sqrt(self.ninp)
         src = self.pos_encoder(src)
         output = self.transformer_encoder(src, self.src_mask)
         output = self.decoder(output)
-        return F.log_softmax(output, dim=-1)
+        return F.log_softmax(output, dim=-2)
