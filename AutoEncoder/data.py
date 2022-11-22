@@ -4,15 +4,19 @@ import torch
 from Bio import SeqIO
 import numpy as np
 from typing import Any
+import glob
 
 class Sequence(object):
     def __init__(self, path):
-        self.train = self.tokenize(os.path.join(path, 'virus-2014.fasta'))
-        self.valid = self.tokenize(os.path.join(path, 'virus-2014.fasta'))
-        self.test = self.tokenize(os.path.join(path, 'virus-2014.fasta'))
+        # train_list=[]
+        # train_list.append(glob.glob(r'../dataset/virus/-2014/*.py'))
+        self.train = self.tokenize(os.path.join(path, 'virus/-2014/virus-2014.fasta'))
+        self.valid = self.tokenize(os.path.join(path, 'virus/2014-2015/virus2014-2015.fasta'))
+        self.test = self.tokenize(os.path.join(path, 'virus/2015-/virus2015-.fasta'))
 
     def tokenize(self, path):
         """Tokenizes a fasta file."""
+        print(path)
         assert os.path.exists(path)
         # read the fasta file 
         records = list(SeqIO.parse(path, "fasta"))
