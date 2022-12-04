@@ -5,7 +5,21 @@ from Bio import SeqIO
 import numpy as np
 from typing import Any
 import glob
+import numpy as np
+import re
+def string_to_array(my_string):
+    my_string = my_string.lower()
+    my_string = re.sub('[^acgt]', 'z', my_string)
+    my_array = np.array(list(my_string))
+    return my_array
 
+# create a label encoder with 'acgtn' alphabet
+from sklearn.preprocessing import LabelEncoder
+label_encoder = LabelEncoder()
+label_encoder.fit(np.array(['a','t','z','c','g']))
+def ordinal_encoder(my_array):
+    integer_encoded = label_encoder.transform(string_to_array(my_array))
+    return integer_encoded
 class Sequence(object):
     def __init__(self, path):
         # train_list=[]
@@ -13,7 +27,11 @@ class Sequence(object):
         self.train = self.tokenize(os.path.join(path, 'virus/-2014/virus-2014.fasta'))
         self.valid = self.tokenize(os.path.join(path, 'virus/2014-2015/virus2014-2015.fasta'))
         self.test = self.tokenize(os.path.join(path, 'virus/2015-/virus2015-.fasta'))
+        # self.train = self.tokenize(os.path.join(path, 'virus/2014-2015/virus2014-2015.fasta'))
+        # self.valid = self.train
+        # self.test = self.train
 
+    
     def tokenize(self, path):
         """Tokenizes a fasta file."""
         print(path)
@@ -37,10 +55,11 @@ class Sequence(object):
             hash_table = hash_table.astype(dtype)
             return hash_table[to_uint8(sequence)]
 
+
         for record in records:
             # convert the sequence to one-hot encoding
-            one_hot = one_hot_encode(str(record.seq))
-            sequence.append(torch.tensor(one_hot))
+            enc = ordinal_encoder(str(record.seq))
+            sequence.append(torch.tensor(enc))
             
 
         return np.array(sequence)

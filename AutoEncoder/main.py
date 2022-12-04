@@ -23,15 +23,15 @@ parser.add_argument('--nhid', type=int, default=200,
                     help='number of hidden units per layer')
 parser.add_argument('--nlayers', type=int, default=3,
                     help='number of layers')
-parser.add_argument('--lr', type=float, default=1e-5,
+parser.add_argument('--lr', type=float, default=1e-3,
                     help='initial learning rate')
 parser.add_argument('--clip', type=float, default=0.25,
                     help='gradient clipping')
 parser.add_argument('--epochs', type=int, default=40,
                     help='upper epoch limit')
-parser.add_argument('--batch_size', type=int, default=5000, metavar='N',
+parser.add_argument('--batch_size', type=int, default=20, metavar='N',
                     help='batch size')
-parser.add_argument('--bptt', type=int, default=5000,
+parser.add_argument('--bptt', type=int, default=8000,
                     help='sequence length')
 parser.add_argument('--dropout', type=float, default=0.2,
                     help='dropout applied to layers (0 = no dropout)')
@@ -114,13 +114,13 @@ test_data=test_data[501:-1]
 # Build the model
 ###############################################################################
 
-ntokens = 4
+ntokens = 5
 if args.model == 'Transformer':
     model = model.TransformerModel(ntokens, args.emsize, args.nhead, args.nhid, args.nlayers, args.dropout).to(device)
 else:
     model = model.RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout, args.tied).to(device)
 
-criterion = nn.CrossEntropyLoss()
+criterion = nn.NLLLoss()
 
 ###############################################################################
 # Training code
@@ -146,22 +146,25 @@ def repackage_hidden(h):
 # to the seq_len dimension in the LSTM.
 
 
-def get_batch(source, i):
-    seq_len = min(args.bptt, len(source) - 1 - i)
-    data = source[i:i+seq_len]
-    target = source[i:i+seq_len]
+def get_batch(source, i, batch_size):
+    seq_len = args.bptt//batch_size
+    data = source[i:i+args.bptt]
+    target = source[i:i+args.bptt]
+    data=torch.reshape(data,(seq_len,batch_size))
     return data.to(device), target.to(device)
 
 def evaluate(data_source):
     # Turn on evaluation mode which disables dropout.
     model.eval()
     total_loss = 0.
-    ntokens = 4
+    ntokens = 5
     total_length = np.sum([len(x) for x in data_source])
     with torch.no_grad():
         for i in range(0, data_source.size):
             for j in range(0,data_source[i].shape[0]-1, args.bptt):
-                data, targets = get_batch(data_source[i], j)
+                if data_source[i].shape[0]-1-j < args.bptt:
+                    break
+                data, targets = get_batch(data_source[i], j, args.batch_size)
                 output = model(data)
                 output_flat = output.view(-1, ntokens)
                 total_loss += len(data) * criterion(output_flat, targets).item()
@@ -173,11 +176,13 @@ def train(writer):
     model.train()
     total_loss = 0.
     start_time = time.time()
-    ntokens = 4
+    ntokens = 5
     total_length = np.sum([len(x) for x in train_data])
     for batch, i in enumerate(range(0, train_data.size)):
         for j in range(0,train_data[i].shape[0]-1, args.bptt):
-            data, targets = get_batch(train_data[i], j)
+            if train_data[i].shape[0]-1-j < args.bptt:
+                break
+            data, targets = get_batch(train_data[i], j, args.batch_size)
             # Starting each batch, we detach the hidden state from how it was previously produced.
             # If we didn't, the model would try backpropagating all the way to start of the dataset.
             model.zero_grad()
@@ -224,7 +229,7 @@ def export_onnx(path, batch_size, seq_len):
 global_iteration=0
 lr = args.lr
 best_val_loss = None
-writer = SummaryWriter(logdir="../checkpoints/lr_1e-5_5000bp_3layers_test")
+writer = SummaryWriter(logdir="../checkpoints/new_lr=1e-3_8000_20_3layers")
 
 # At any point you can hit Ctrl + C to break out of training early.
 try:
