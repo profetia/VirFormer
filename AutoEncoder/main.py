@@ -1,8 +1,8 @@
 # coding: utf-8
+import os
 import argparse
 import time
 import math
-import os
 import torch
 import torch.nn as nn
 import torch.onnx
@@ -13,7 +13,7 @@ import model
 import numpy as np
 
 parser = argparse.ArgumentParser(description='PyTorch Transformer Model')
-parser.add_argument('--data', type=str, default='../dataset',
+parser.add_argument('--data', type=str, default='/home/zhaoqch1/dataset',
                     help='location of the data sequence')
 parser.add_argument('--model', type=str, default='Transformer',
                     help='type of network (RNN_TANH, RNN_RELU, LSTM, GRU, Transformer)')
