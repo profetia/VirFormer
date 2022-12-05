@@ -87,7 +87,7 @@ class PositionalEncoding(nn.Module):
         div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
-        pe = pe.unsqueeze(0).transpose(0, 1)
+        pe = pe.unsqueeze(0)
         self.register_buffer('pe', pe)
 
     def forward(self, x):
@@ -101,7 +101,7 @@ class PositionalEncoding(nn.Module):
             >>> output = pos_encoder(x)
         """
 
-        x = x + self.pe[:x.size(0), :]
+        x = x + self.pe[:, :x.size(1), :]
         return self.dropout(x)
 
 class TransformerModel(nn.Module):
