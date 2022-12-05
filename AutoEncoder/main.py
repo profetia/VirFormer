@@ -150,7 +150,7 @@ def get_batch(source, i, batch_size):
     seq_len = args.bptt//batch_size
     data = source[i:i+args.bptt]
     target = source[i:i+args.bptt]
-    data=torch.reshape(data,(seq_len,batch_size))
+    data=torch.reshape(data,(batch_size, seq_len))
     return data.to(device), target.to(device)
 
 def evaluate(data_source):
