@@ -7,6 +7,12 @@ from typing import Any
 import glob
 import numpy as np
 import re
+import csv
+import itertools
+import pickle
+from torch.utils import data
+import random
+
 def string_to_array(my_string):
     my_string = my_string.lower()
     my_string = re.sub('[^acgt]', 'z', my_string)
@@ -124,7 +130,7 @@ class ClassifierDataset(data.Dataset):
         self.seq_len = seq_len
         self.sample_num = sample_num
         self.regenerate_data()
-            
+    
     def regenerate_data(self):
         self.data = []
         for seq, label in self.data_list:
@@ -134,9 +140,9 @@ class ClassifierDataset(data.Dataset):
                     start = np.random.randint(0, len(seq) - self.seq_len)
                     end = start + self.seq_len
                     self.data.append((seq[start:end], label))
-
+    
     def __len__(self):
         return len(self.data)
-
+    
     def __getitem__(self, index):
         return self.data[index]
