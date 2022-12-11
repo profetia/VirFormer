@@ -20,17 +20,68 @@ label_encoder.fit(np.array(['a','t','z','c','g']))
 def ordinal_encoder(my_array):
     integer_encoded = label_encoder.transform(string_to_array(my_array))
     return integer_encoded
+
+
 class Sequence(object):
     def __init__(self, path):
         # train_list=[]
         # train_list.append(glob.glob(r'../dataset/virus/-2014/*.py'))
-        self.train = self.tokenize(os.path.join(path, 'virus/-2014/virus-2014.fasta'))
-        self.valid = self.tokenize(os.path.join(path, 'virus/2014-2015/virus2014-2015.fasta'))
-        self.test = self.tokenize(os.path.join(path, 'virus/2015-/virus2015-.fasta'))
-        # self.train = self.tokenize(os.path.join(path, 'virus/2014-2015/virus2014-2015.fasta'))
-        # self.valid = self.train
-        # self.test = self.train
 
+        label = self.read_label(os.path.join(path, 'source/simulation_abundance_list.CSV'))
+
+        if os.path.exists('data.pkl'):
+            with open('data.pkl', 'rb') as f:
+                self.data = pickle.load(f)
+            # self.data = list(map(lambda x: x.float().requires_grad_(True), self.data))
+        else:
+            data_list = sorted(list(glob.glob(os.path.join(path, 'simulation_abundance/*.fasta'))))
+            data_list = list(map(self.tokenize, data_list))
+            self.data = list(itertools.chain.from_iterable(data_list))
+
+            # Dump the data
+            with open('data.pkl', 'wb') as f:
+                pickle.dump(self.data, f)
+
+        self.data = list(zip(self.data, label))
+        random.shuffle(self.data)
+        
+        train_num = int(len(self.data) * 0.8)
+        test_num = int((len(self.data) - train_num) * 0.5)
+        valid_num = len(self.data) - train_num - test_num
+
+        # Combine the data and labels
+        self.train = self.data[:train_num]
+        self.test = self.data[train_num:train_num + test_num]
+        self.valid = self.data[train_num + test_num:]
+
+        # self.valid = self.tokenize(os.path.join(path, 'virus/2014-2015/virus2014-2015.fasta'))
+        # self.test = self.tokenize(os.path.join(path, 'virus/2015-/virus2015-.fasta'))
+        # self.train = self.tokenize(os.path.join(path, 'virus/2014-2015/virus2014-2015.fasta'))
+
+    def read_label(self, path):
+        """
+        Reads the label file.
+
+        CSV in the format of:
+        NCBI Accession,type,proportion,number of bp
+        
+        The label is the indicator of the virus.
+
+        """
+        assert os.path.exists(path)
+        with open(path, 'r') as f:
+            reader = csv.reader(f)
+            next(reader)
+            labels = []
+            for row in reader:
+                labels.append(row[1])
+        def to_type(label):
+            if label == 'virus':
+                return 1
+            else:
+                return 0
+        labels = list(map(to_type, labels))
+        return torch.tensor(labels, dtype=torch.float32)
     
     def tokenize(self, path):
         """Tokenizes a fasta file."""
@@ -59,6 +110,11 @@ class Sequence(object):
         for record in records:
             # convert the sequence to one-hot encoding
             enc = ordinal_encoder(str(record.seq))
+            sequence.append(torch.tensor(enc, dtype=torch.float32))
+            
+
+        return sequence
+
 class ClassifierDataset(data.Dataset):
 
     def __init__(self, data_list, seq_len, sample_num = 20) -> None:
