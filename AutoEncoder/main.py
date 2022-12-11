@@ -169,7 +169,7 @@ def evaluate_classifier():
 
 def train_classifier(writer, optimizer: torch.optim.Optimizer):
     # Turn on training mode which enables dropout.
-    model.train()
+    classifier_model.train()
     train_dataset.regenerate_data()
     train_data = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=8, pin_memory=True)
     total_loss = 0.
@@ -218,7 +218,7 @@ def export_onnx(path, batch_size, seq_len):
 global_iteration=0
 best_val_loss = None
 writer = SummaryWriter(logdir=f"../checkpoints/{PROJECT_NAME}")
-optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad,model.parameters()), lr=args.lr)
+optimizer = torch.optim.Adam(classifier_model.parameters(), lr=args.lr)
 
 # At any point you can hit Ctrl + C to break out of training early.
 try:
