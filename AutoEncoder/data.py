@@ -59,7 +59,28 @@ class Sequence(object):
         for record in records:
             # convert the sequence to one-hot encoding
             enc = ordinal_encoder(str(record.seq))
-            sequence.append(torch.tensor(enc))
-            
+class ClassifierDataset(data.Dataset):
 
-        return np.array(sequence)
+    def __init__(self, data_list, seq_len, sample_num = 20) -> None:
+        super().__init__()
+        self.data_list = data_list
+        self.data = []
+        self.seq_len = seq_len
+        self.sample_num = sample_num
+        self.regenerate_data()
+            
+    def regenerate_data(self):
+        self.data = []
+        for seq, label in self.data_list:
+            # Randomly sample a slice of the sequence
+            if len(seq) > self.seq_len:
+                for i in range(self.sample_num):
+                    start = np.random.randint(0, len(seq) - self.seq_len)
+                    end = start + self.seq_len
+                    self.data.append((seq[start:end], label))
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, index):
+        return self.data[index]
