@@ -27,7 +27,7 @@ parser.add_argument('--mps', action='store_true', default=False,
                         help='enables macOS GPU training')
 parser.add_argument('--temperature', type=float, default=1.0,
                     help='temperature - higher will increase diversity')
-parser.add_argument('--log-interval', type=int, default=100,
+parser.add_argument('--log_interval', type=int, default=100,
                     help='reporting interval')
 args = parser.parse_args()
 
