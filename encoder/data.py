@@ -24,13 +24,38 @@ class Sequence(object):
     def __init__(self, path):
         # train_list=[]
         # train_list.append(glob.glob(r'../dataset/virus/-2014/*.py'))
-        self.train = self.tokenize(os.path.join(path, 'virus/-2014/virus-2014.fasta'))
-        self.valid = self.tokenize(os.path.join(path, 'virus/2014-2015/virus2014-2015.fasta'))
-        self.test = self.tokenize(os.path.join(path, 'virus/2015-/virus2015-.fasta'))
+        self.extradata = self.valid = self.tokenize(os.path.join(path, 'human/GRCh38_latest_genomic.fna'))
+        self.train = self.tokenize(os.path.join(path, 'prokaryote/-2014/prokaryote-2014_1-3000.fasta'))
+        # for file in ['simulation_abundance/sa_1001-2000.fasta','simulation_abundance/sa_2001-3000.fasta',\
+        #     'simulation_abundance/sa_3001-4000.fasta','simulation_abundance/sa_4001-5000.fasta'\
+        #     'human/GRCh38_latest_genomic.fna']:
+        for file in [\
+            'prokaryote/-2014/prokaryote-2014_3001-6000.fasta',\
+            'prokaryote/-2014/prokaryote-2014_6001-9000.fasta',\
+            'prokaryote/-2014/prokaryote-2014_9001-12000.fasta',\
+            'prokaryote/-2014/prokaryote-2014_12001-16132.fasta'\
+            ]:
+            np.concatenate((self.train,self.tokenize(os.path.join(path, file))))
+            np.concatenate((self.train,self.extradata[:600]))
+            np.random.shuffle(self.train)
+        # self.valid = self.tokenize(os.path.join(path, 'virus/2014-2015/virus2014-2015.fasta'))
+        # self.test = self.tokenize(os.path.join(path, 'virus/2015-/virus2015-.fasta'))
         # self.train = self.tokenize(os.path.join(path, 'virus/2014-2015/virus2014-2015.fasta'))
-        # self.valid = self.train
-        # self.test = self.train
-
+        self.valid = self.tokenize(os.path.join(path, 'prokaryote/2014-2015/prokaryote2014-2015.fasta'))
+        np.concatenate((self.valid,self.extradata[601:650]))
+        np.random.shuffle(self.valid)
+        self.test = self.tokenize(os.path.join(path, 'prokaryote/2015-/prokaryote2015-_1-1000.fasta'))
+        for file in [\
+            'prokaryote/2015-/prokaryote2015-_1001-1500.fasta',\
+            'prokaryote/2015-/prokaryote2015-_1501-2000.fasta',\
+            'prokaryote/2015-/prokaryote2015-_2001-3000.fasta',\
+            'prokaryote/2015-/prokaryote2015-_3001-4000.fasta',\
+            'prokaryote/2015-/prokaryote2015-_4001-5000.fasta',\
+            'prokaryote/2015-/prokaryote2015-_5001-6248.fasta'\
+            ]:
+            np.concatenate((self.test,self.tokenize(os.path.join(path, file))))
+            np.concatenate((self.test,self.extradata[651:]))
+            np.random.shuffle(self.test)
     
     def tokenize(self, path):
         """Tokenizes a fasta file."""
