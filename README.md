@@ -18,15 +18,15 @@ VirFormer requires Python 3.9 with the package of pytorch, numpy, torchmetrics, 
 
 ## Installation
 
-After installing dependencies, you can run the main.py in ./encoder to train the encoder. And you can run main.py, main_new.py, main_linear.py in ./classifier to train the classifiers. 
+After installing dependencies, you can run the main.py in [encoder](encoder) to train the encoder. And you can run main.py, main_new.py, main_linear.py in [classifier](classifier) to train the classifiers. 
 
-For testing, you can run auroc.ipynb in ./classifier to test different models.
+For testing, you can run auroc.ipynb in [classifier](classifier) to test different models.
 
 
 
 ## Dataset
 
-Before you run our code, you need to download the data from NCBI using the Accession ID in ./dataset. And you are recommended to divide them into human, prokaryote, simulation_abundance and virus folders. You may need to change some paths in our code to match the path of your dataset.
+Before you run our code, you need to download the data from NCBI using the Accession ID in [dataset](dataset). And you are recommended to divide them into human, prokaryote, simulation_abundance and virus folders. You may need to change some paths in our code to match the path of your dataset.
 
 NCBI Accessions: https://epan.shanghaitech.edu.cn/l/wFKC6o
 
